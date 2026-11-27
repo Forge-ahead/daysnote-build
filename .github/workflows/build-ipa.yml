@@ -1,0 +1,108 @@
+name: Build Unsigned IPA (with Widget Extension)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      # 注意：不要运行 `npx cap sync ios`。
+      # 本项目已手工配置好 Widget Extension target / entitlements /
+      # capacitor.config.json 的 packageClassList；cap sync 会覆盖这些改动。
+      # 仅把最新 dist 资源复制进原生工程即可（与 cap copy 等价）。
+      - name: Copy web assets into native projects (no cap sync)
+        run: |
+          rm -rf ios/App/App/public
+          cp -R dist ios/App/App/public
+          rm -rf android/app/src/main/assets/public
+          cp -R dist android/app/src/main/assets/public
+          echo "Web assets copied. Widget native config preserved."
+
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: pod install --repo-update
+
+      - name: Build app + Widget Extension (unsigned)
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+          echo "=== Verify Widget embedded ==="
+          APP="$RUNNER_TEMP/derived/Build/Products/Release-iphoneos/App.app"
+          ls -la "$APP/PlugIns" || (echo "ERROR: PlugIns missing"; exit 1)
+          test -f "$APP/PlugIns/DaysNoteWidget.appex/DaysNoteWidget" || (echo "ERROR: Widget binary missing"; exit 1)
+          echo "Widget embedded OK"
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R "$RUNNER_TEMP/derived/Build/Products/Release-iphoneos/App.app" Payload/
+          zip -qr DaysNote-unsigned-with-widget.ipa Payload
+          ls -lh DaysNote-unsigned-with-widget.ipa
+          unzip -l DaysNote-unsigned-with-widget.ipa | grep -i "PlugIns\|appex" | head -20
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DaysNote-unsigned-with-widget-IPA
+          path: DaysNote-unsigned-with-widget.ipa
+          if-no-files-found: error
+
+      - name: Commit IPA into repo for direct download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, urllib.request
+          repo = "Forge-ahead/daysnote-build"
+          token = os.environ["GH_TOKEN"]
+          def api(path, method="GET", payload=None):
+              data = json.dumps(payload).encode() if payload is not None else None
+              req = urllib.request.Request(
+                  "https://api.github.com/repos/" + repo + path,
+                  data=data, method=method,
+                  headers={"Authorization": "Bearer " + token,
+                           "Accept": "application/vnd.github+json",
+                           "User-Agent": "ipa-build"})
+              with urllib.request.urlopen(req) as r:
+                  return json.load(r)
+          raw = open("DaysNote-unsigned-with-widget.ipa", "rb").read()
+          blob = api("/git/blobs", "POST",
+                     {"content": base64.b64encode(raw).decode(), "encoding": "base64"})
+          base_sha = api("/git/ref/heads/main")["object"]["sha"]
+          base_tree = api("/git/commits/" + base_sha)["tree"]["sha"]
+          tree = api("/git/trees", "POST",
+                     {"base_tree": base_tree,
+                      "tree": [{"path": "DaysNote-unsigned-with-widget.ipa", "mode": "100644",
+                                "type": "blob", "sha": blob["sha"]}]})
+          commit = api("/git/commits", "POST",
+                       {"message": "Add unsigned IPA with Widget Extension",
+                        "tree": tree["sha"], "parents": [base_sha]})
+          api("/git/refs/heads/main", "PATCH", {"sha": commit["sha"]})
+          print("IPA committed as blob", blob["sha"], "size", len(raw))
+          PY

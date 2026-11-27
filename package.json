@@ -1,0 +1,36 @@
+{
+  "name": "days-note",
+  "private": true,
+  "version": "2.3.0",
+  "type": "module",
+  "description": "手绘风倒数日 / 纪念日 App，支持 CouchDB 同步与 AI 自然语言管理",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3",
+    "@capacitor/preferences": "^7.0.2",
+    "lucide-react": "^0.468.0",
+    "lunar-javascript": "^1.7.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "puppeteer-core": "^25.18.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}

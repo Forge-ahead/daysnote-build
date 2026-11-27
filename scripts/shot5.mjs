@@ -1,0 +1,15 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/usr/bin/chromium', headless: 'new', args: ['--no-sandbox', '--disable-gpu'] })
+const p = await b.newPage()
+await p.setViewport({ width: 428, height: 926, deviceScaleFactor: 1 })
+await p.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded' })
+await new Promise(r => setTimeout(r, 800))
+await p.evaluate(() => { location.hash = '#/widgets' })
+await new Promise(r => setTimeout(r, 400))
+await p.screenshot({ path: 'previews/v5-widgets.png' })
+// 点第一个模板进预览
+await p.click('.widget-tpl')
+await new Promise(r => setTimeout(r, 400))
+await p.screenshot({ path: 'previews/v5-widget-modal.png' })
+console.log('saved v5-widgets.png, v5-widget-modal.png')
+await b.close()

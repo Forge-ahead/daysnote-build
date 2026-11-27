@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer-core'
+const b = await puppeteer.launch({ executablePath: '/usr/bin/chromium', headless: 'new', args: ['--no-sandbox', '--disable-gpu'] })
+const p = await b.newPage()
+await p.setViewport({ width: 428, height: 926, deviceScaleFactor: 1 })
+await p.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded' })
+await new Promise(r => setTimeout(r, 800))
+await p.evaluate(() => { location.hash = '#/settings' })
+await new Promise(r => setTimeout(r, 500))
+await p.screenshot({ path: 'previews/v4-settings-sync.png' })
+console.log('saved v4-settings-sync.png')
+await b.close()

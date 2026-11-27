@@ -1,0 +1,25 @@
+import type { CapacitorConfig } from '@capacitor/cli'
+
+const config: CapacitorConfig = {
+  appId: 'com.daysnote.app',
+  appName: '纪念日',
+  webDir: 'dist',
+  bundledWebRuntime: false,
+  ios: {
+    contentInset: 'always',
+    backgroundColor: '#fbfaf7',
+    allowsLimitedLinking: false,
+  },
+  android: {
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
+  },
+  plugins: {
+    Preferences: {
+      preferWeb: true,
+    },
+  },
+}
+
+export default config

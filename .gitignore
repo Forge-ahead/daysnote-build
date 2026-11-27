@@ -1,0 +1,10 @@
+node_modules/
+*.tsbuildinfo
+.DS_Store
+ios/App/Pods/
+ios/App/Podfile.lock
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.log
